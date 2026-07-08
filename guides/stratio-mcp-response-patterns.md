@@ -24,6 +24,13 @@ If either check fails, do not poll: process the response as-is or handle the ups
 
 Applies to ALL MCP tools on every Stratio MCP server.
 
+**Latency is not failure — never abandon the work.** A `task_id`, or a long run of `"pending"` polls, is the expected behaviour of a long-running tool, not a malfunction. When it happens:
+
+- **Keep polling.** Call `get_mcp_task_result` again immediately on each `"pending"`, until the status becomes `"done"`, `"error"` or `"not_found"`. High latency on its own is never a reason to stop.
+- **Treat every task independently.** A slow or failed task does NOT imply the next calls will behave the same way. Never generalise one slow/failed tool call into "all long-running tools are failing" and give up on the remaining work.
+- **Never fabricate a substitute deliverable.** Do NOT replace the real tool execution with an invented plan for the user to copy-paste into the Governance UI (or any similar hand-off) unless the user explicitly asks for it.
+- **Report honestly and ask.** If a phase genuinely cannot complete after the retries allowed by the calling guide, report the **real state** (what succeeded, what did not) and ask the user whether to retry or stop. If a task is still `"pending"` after many polls, say it is still running and ask whether to keep waiting — do not silently abandon it.
+
 ## 2. Large Tool Outputs — Truncated and Saved to File
 
 When a tool's inline output would exceed the host environment's response limit, the response is replaced by a truncation notice plus a file path where the full content was written. The data is already there — the tool succeeded — but it is no longer inline. This is **distinct from §1** (where the response is a `task_id` because the tool is still running): here the work is done; there it is still pending.
@@ -56,3 +63,11 @@ When a tool's inline output would exceed the host environment's response limit, 
 - _Sample_: first N entries to inspect the structure before deciding the goal.
 
 Applies to any tool that may return large payloads. On the data side, common cases include `list_domain_tables`, `list_domains`, `get_tables_details` over many tables, and `query_data` over wide/long results. On the governance side, common cases include `list_business_views`, `list_technical_domain_concepts`, `search_data_dictionary` and any `*_details` tool over large catalogs.
+
+## 3. Subagents and MCP
+
+Use a subagent (the runtime's Task tool, e.g. OpenCode's `explore`) ONLY to inspect a truncated file on disk, as described in §2 — that subagent reads a saved file with `grep`/`jq`/`python` and calls no MCP tool.
+
+Never run or poll a Stratio MCP tool (`gov` or `sql`) inside a subagent, subtask or sub-session. This holds for **any** MCP call, reads included (e.g. discovery or listing), not only writes. Emit every MCP call inline in this conversation; to run several at once, put them in the same response — never in a subagent.
+
+This matters because a subagent runs with user questions disabled, so it cannot confirm a destructive operation (e.g. `regenerate=true`, `delete_*`); because a `task_id` returned inside a subagent's `result` cannot be polled from here (§1); and because the subagent does not see the confirmed domain, the enriched `user_instructions` or the pipeline state of this conversation.

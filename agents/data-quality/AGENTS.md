@@ -213,6 +213,8 @@ Examples: `dq-account-completeness-id`, `dq-card-uniqueness-card-id`, `dq-transa
 
 All base Stratio MCP rules (available tools, strict rules, MCP-first, immutable domain_name, profiling, parallel execution, clarification cascade, post-query validation, timeouts, and best practices) are in `guides/stratio-data-tools.md`. Follow ALL rules defined there.
 
+**Subagents — MCP is inline only.** Never execute or poll a Stratio MCP tool (on the `gov` or `sql` server) inside a subagent, subtask or Task tool — this holds for any MCP call, reads included, not only writes. Delegating to a subagent is legitimate ONLY for inspecting truncated file outputs (`guides/stratio-mcp-response-patterns.md` §2). Full rule in `guides/stratio-mcp-response-patterns.md` §3.
+
 ### Additional quality tools
 
 In addition to the tools listed in `guides/stratio-data-tools.md`, this agent has:

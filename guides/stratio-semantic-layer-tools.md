@@ -167,7 +167,7 @@ When `create_ontology` or `update_ontology` returns an error **after the plan ha
 - **Creation**: Sequential within the same phase
 - **Between phases**: Strict mandatory sequence: technical terms -> ontology -> business views -> SQL mappings -> (optional publishing) -> semantic terms. Each phase depends on the artifacts from the previous one. Publishing can be done after completing mappings or at any later point
 
-**"In parallel" here means emitting multiple tool calls **within the same phase** in the SAME response so the runtime executes them concurrently — NOT spawning subtasks, sub-sessions, or invoking the Task tool, and NOT mixing tool calls from different phases. Never delegate governance MCP calls to a subagent.**
+**"In parallel" here means emitting multiple tool calls **within the same phase** in the SAME response so the runtime executes them concurrently — NOT spawning subtasks, sub-sessions, or invoking the Task tool, and NOT mixing tool calls from different phases. Never delegate governance MCP calls to a subagent (full rule: `stratio-mcp-response-patterns.md` §3).**
 
 ## 9. MCP Response Patterns
 
