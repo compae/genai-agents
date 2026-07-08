@@ -167,7 +167,7 @@ Cuando `create_ontology` o `update_ontology` devuelve error **después de que el
 - **Creación**: Secuencial dentro de una misma fase
 - **Entre fases**: Secuencia estricta obligatoria: términos técnicos → ontología → vistas de negocio → mappings SQL → (publicación opcional) → términos semánticos. Cada fase depende de los artefactos de la anterior. La publicación puede hacerse tras completar mappings o en cualquier momento posterior
 
-**"En paralelo" aquí significa emitir múltiples tool calls **dentro de la misma fase** en la MISMA respuesta para que el runtime las ejecute concurrentemente — NO crear subtareas, sub-sesiones, ni invocar la tool Task, y NO mezclar tool calls de fases distintas. Nunca delegues llamadas MCP de gobierno a un subagente.**
+**"En paralelo" aquí significa emitir múltiples tool calls **dentro de la misma fase** en la MISMA respuesta para que el runtime las ejecute concurrentemente — NO crear subtareas, sub-sesiones, ni invocar la tool Task, y NO mezclar tool calls de fases distintas. Nunca delegues llamadas MCP de gobierno a un subagente (regla completa: `stratio-mcp-response-patterns.md` §3).**
 
 ## 9. Patrones de Respuesta del MCP
 
