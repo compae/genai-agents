@@ -24,6 +24,13 @@ Si falla cualquiera de los dos checks, no hacer polling: procesar la respuesta t
 
 Aplica a TODAS las tools MCP de cualquier servidor de Stratio.
 
+**La latencia no es un fallo — nunca abandones el trabajo.** Un `task_id`, o una racha larga de polls en `"pending"`, es el comportamiento esperado de una tool de larga duración, no un mal funcionamiento. Cuando ocurra:
+
+- **Sigue haciendo polling.** Llama a `get_mcp_task_result` de nuevo inmediatamente en cada `"pending"`, hasta que el estado pase a `"done"`, `"error"` o `"not_found"`. La latencia alta por sí sola nunca es motivo para parar.
+- **Trata cada tarea de forma independiente.** Una tarea lenta o fallida NO implica que las siguientes vayan a comportarse igual. Nunca generalices una llamada lenta/fallida a "todas las tools de larga duración están fallando" ni abandones el trabajo restante.
+- **Nunca fabriques un entregable sustituto.** NO sustituyas la ejecución real de la tool por un plan inventado para que el usuario lo copie y pegue en la UI de Governance (ni ningún traspaso similar) salvo que el usuario lo pida explícitamente.
+- **Informa con honestidad y pregunta.** Si una fase realmente no puede completarse tras los reintentos que permita la guía que invoca este patrón, informa del **estado real** (qué tuvo éxito y qué no) y pregunta al usuario si reintentar o parar. Si una tarea sigue en `"pending"` tras muchos polls, di que sigue ejecutándose y pregunta si seguir esperando — no la abandones en silencio.
+
 ## 2. Salidas de Tools de Gran Tamaño — Truncadas y Guardadas en Fichero
 
 Cuando la salida inline de una tool superaría el límite de respuesta del entorno anfitrión, la respuesta se sustituye por un aviso de truncación y la ruta de un fichero donde se escribió el contenido completo. Los datos están ahí — la tool tuvo éxito — pero ya no son inline. Esto es **distinto de §1** (donde la respuesta es un `task_id` porque la tool sigue ejecutándose): aquí el trabajo ya está hecho; allí sigue pendiente.
@@ -56,3 +63,11 @@ Cuando la salida inline de una tool superaría el límite de respuesta del entor
 - _Muestra_: primeras N entradas para inspeccionar la estructura antes de decidir el objetivo.
 
 Aplica a cualquier tool que pueda devolver payloads grandes. En el lado de datos, los casos comunes incluyen `list_domain_tables`, `list_domains`, `get_tables_details` sobre muchas tablas y `query_data` sobre resultados anchos/largos. En el lado de gobierno, los casos comunes incluyen `list_business_views`, `list_technical_domain_concepts`, `search_data_dictionary` y cualquier tool `*_details` sobre catálogos grandes.
+
+## 3. Subagentes y MCP
+
+Usa un subagente (la tool Task del runtime, p. ej. `explore` de OpenCode) SOLO para inspeccionar un fichero truncado en disco, como se describe en §2 — ese subagente lee un fichero guardado con `grep`/`jq`/`python` y no llama a ninguna tool MCP.
+
+Nunca ejecutes ni hagas polling de una tool MCP de Stratio (`gov` o `sql`) dentro de un subagente, subtarea o sub-sesión. Aplica a **cualquier** llamada MCP, incluidas las de lectura (p. ej. descubrimiento o listado), no solo las de escritura. Emite cada llamada MCP inline en esta conversación; para ejecutar varias a la vez, ponlas en la misma respuesta — nunca en un subagente.
+
+Esto importa porque un subagente se ejecuta con las preguntas al usuario deshabilitadas, así que no puede confirmar una operación destructiva (p. ej. `regenerate=true`, `delete_*`); porque un `task_id` devuelto dentro del `result` de un subagente no se puede pollear desde aquí (§1); y porque el subagente no ve el dominio confirmado, las `user_instructions` enriquecidas ni el estado del pipeline de esta conversación.
