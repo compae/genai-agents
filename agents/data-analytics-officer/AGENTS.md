@@ -247,7 +247,7 @@ Load `/analyze` §4.1 to run the question block (Depth + Audience + Format + Tes
 
 0. **Determine analysis folder**: Generate name `YYYY-MM-DD_HHMM_descriptive_name` (lowercase, no accents, underscores, max 30 chars in the name). Announce in chat. Create subdirectories: `output/[ANALYSIS_DIR]/scripts/`, `output/[ANALYSIS_DIR]/data/`, `output/[ANALYSIS_DIR]/assets/`. If depth >= Standard, also create `output/[ANALYSIS_DIR]/reasoning/` and `output/[ANALYSIS_DIR]/validation/`. Persist the approved plan in `output/[ANALYSIS_DIR]/plan.md` with the full content of the plan formulated in Phase 3
 1. Environment: the Python stack is provided by the current environment (Stratio Cowork sandbox image or, in dev local, your own venv). Use `python3` directly — no bootstrap script. If a runtime-only library is needed, `pip install <pkg>`; if recurring, add it to `requirements.txt` so the sandbox image picks it up on next rebuild
-2. Query data via MCP (`query_data` with natural language questions and `output_format="dict"`). Launch all independent queries from the plan in parallel
+2. Query data via MCP. **Prefer aggregated results** — ask for the metrics/markers already computed (averages, percentiles, counts, correlations by group) so each result is a handful of rows (3-level hierarchy in `guides/stratio-data-tools.md` §3). Use `query_data` with natural language questions (`output_format="dict"`); launch all independent queries from the plan in parallel. Pull row-level detail only when a Python test/clustering genuinely needs it, and keep it on disk, never in the context
 3. **Validate received data** (see section 4 — Post-query Validation)
 4. Write Python scripts in `output/[ANALYSIS_DIR]/scripts/` with descriptive names
 5. **(If testing = Yes)** Generate unit tests (`output/[ANALYSIS_DIR]/scripts/test_*.py`) with mocks or data subsets
@@ -350,6 +350,8 @@ For detailed implementation of each technique, see skill `/analyze` [advanced-an
 
 All rules for using Stratio MCPs (available tools, strict rules, MCP-first, immutable domain_name, output_format, profiling, parallel execution, clarification cascade, post-query validation, timeouts, and best practices) are in `guides/stratio-data-tools.md`. Follow ALL rules defined there.
 
+**`execute_sql` — no ad-hoc SQL in this agent.** `execute_sql` is used ONLY to re-run SQL produced by `generate_sql` (reviewed if needed). Do not hand-write your own SQL to explore, filter or pull data — not even if you think you know the columns: it bypasses the governed-domain knowledge (physical names, business rules, governed joins) and tends to pull row-level detail that floods the context. For data use `query_data`; for a tailored aggregate use `generate_sql` → review → `execute_sql`.
+
 **Subagents — MCP is inline only.** Never execute or poll a Stratio MCP tool (on the `gov` or `sql` server) inside a subagent, subtask or Task tool — this holds for any MCP call, reads included, not only writes. Delegating to a subagent is legitimate ONLY for inspecting truncated file outputs (`guides/stratio-mcp-response-patterns.md` §2). Full rule in `guides/stratio-mcp-response-patterns.md` §3.
 
 Data sufficiency checklist and Data Profiling Score: see skill `/analyze` sec 3.
@@ -401,10 +403,11 @@ See `/quality-report`'s `quality-report-layout.md` for the report-specific layou
 - Save intermediate data in `output/[ANALYSIS_DIR]/data/` (CSVs, pickles, JSONs)
 - Final deliverables always in `output/[ANALYSIS_DIR]/`
 - **Large datasets** — Activate if profiling reports >500K rows:
-  1. **Efficient dtypes**: Repetitive strings → `category`, integers → `int32`, dates parsed on load (`parse_dates`)
-  2. **Never `iterrows()`**: Always vectorized operations (`apply`, broadcasting, `np.where`)
-  3. **Chunks for >1M rows**: `pd.read_csv(..., chunksize=100000)` + process + concat. Or better: aggregate in MCP
-  4. **Sampling for development**: 10% for developing/testing, 100% for final version. Verify result consistency +-5%
+  1. **Prefer aggregating in the MCP (SQL)**: push the grouping/statistics into the query so only the aggregated result reaches the analysis. This is the first resort, not the last
+  2. **Efficient dtypes**: Repetitive strings → `category`, integers → `int32`, dates parsed on load (`parse_dates`)
+  3. **Never `iterrows()`**: Always vectorized operations (`apply`, broadcasting, `np.where`)
+  4. **Chunks for >1M rows** (only when row-level detail is unavoidable): read from disk with `pd.read_csv(..., chunksize=100000)` + process + concat — never load the detail into the model context
+  5. **Sampling for development**: 10% for developing/testing; for the final version prefer the MCP aggregate, and only read the full row-level detail from disk when a test/clustering requires it. Verify result consistency +-5%
 
 ---
 
