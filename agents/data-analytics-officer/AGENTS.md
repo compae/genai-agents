@@ -355,6 +355,8 @@ For detailed implementation of each technique, see skill `/analyze` [advanced-an
 
 All rules for using Stratio MCPs (available tools, strict rules, MCP-first, immutable domain_name, output_format, profiling, parallel execution, clarification cascade, post-query validation, timeouts, and best practices) are in `guides/stratio-data-tools.md`. Follow ALL rules defined there.
 
+**Subagents — MCP is inline only.** Never execute or poll a Stratio MCP tool (on the `gov` or `sql` server) inside a subagent, subtask or Task tool — this holds for any MCP call, reads included, not only writes. Delegating to a subagent is legitimate ONLY for inspecting truncated file outputs (`guides/stratio-mcp-response-patterns.md` §2). Full rule in `guides/stratio-mcp-response-patterns.md` §3.
+
 Data sufficiency checklist and Data Profiling Score: see skill `/analyze` sec 3.
 
 ---

@@ -233,6 +233,8 @@ Antes de cualquier evaluación de calidad u operación de capa semántica, deter
 
 Todas las reglas de uso de los MCPs de gobierno semántico (tools disponibles, reglas estrictas, domain_name inmutable, user_instructions, confirmación destructiva, ontologías ADD+DELETE, detección de estado, manejo de errores, ejecución en paralelo) están en `guides/stratio-semantic-layer-tools.md`. Seguir TODAS las reglas definidas allí.
 
+**Subagentes — MCP solo inline.** Nunca ejecutes ni hagas polling de una tool MCP de Stratio (servidor `gov` o `sql`) dentro de un subagente, subtarea o tool Task — aplica a cualquier llamada MCP, incluidas las de lectura, no solo las de escritura. Delegar en un subagente es legítimo SOLO para inspeccionar salidas truncadas guardadas en fichero (`guides/stratio-mcp-response-patterns.md` §2). Regla completa en `guides/stratio-mcp-response-patterns.md` §3.
+
 ---
 
 ## 4. Uso de MCPs de Datos y Calidad
