@@ -139,12 +139,15 @@ Antes de cualquier operación, verificar que no exista ya:
 - Si no puede → preguntar al usuario qué contexto adicional aportar → pasarlo como `user_instructions` en el reintento
 - Reintentar SOLO la entidad fallida (tabla, clase, vista específica), no todo el lote
 - Máximo 2 reintentos por entidad. Si persiste → documentar en resumen y continuar con las demás
+- **Excepción — los errores de precondición de datos NO son reintentables** (ver §7.3): no se arreglan reintentando ni mejorando `user_instructions`. No consumen presupuesto de reintentos — presenta la guía del mensaje y ofrece la acción correctiva en vez de entrar en bucle.
 
 ### 7.2 Fallo de generación de ontología con plan válido (recuperación post-validación-de-plan)
 
 Cuando `create_ontology` o `update_ontology` devuelve error **después de que el plan haya sido validado** —es decir, la chain produjo (o produjo parcialmente) clases/vistas pero los supervisores las siguieron rechazando— la recuperación es distinta del bucle genérico "mejorar `user_instructions` y reintentar" anterior. En ese escenario, el agente **debe presentar al usuario las siguientes opciones y dejar que elija**, y luego ejecutar la secuencia de llamadas correspondiente.
 
-> Distinción primero: cuando el mensaje de respuesta indica que el fallo ocurrió **antes de generar ninguna clase** — formulaciones típicas: el plan solicitado no es alcanzable con las tablas disponibles, faltan tablas necesarias en el dominio de datos, la petición excede los límites de tablas/tamaño, o la chain no pudo validar el plan — la ontología **no se persistió**. No hay nada que limpiar. Basta con volver a llamar a `create_ontology` con un plan ajustado (acotar el alcance, corregir nombres de tablas, simplificar relaciones); NO entrar en el flujo A-F siguiente.
+> Distinción primero: cuando la respuesta indica que el fallo ocurrió **antes de generar ninguna clase**, la ontología **no se persistió** — no hay nada que limpiar, así que NO entrar en el flujo A-F siguiente. Pero hay **dos causas pre-generación distintas, con acciones opuestas**:
+> - **(i) Plan no viable** — el plan no es alcanzable con las tablas disponibles, referencia nombres de tabla incorrectos, o excede los límites de tablas/tamaño. Acción: volver a llamar a `create_ontology` con un **plan ajustado** (acotar el alcance, corregir nombres de tablas, simplificar relaciones).
+> - **(ii) Precondición de datos no cumplida** — un problema de disponibilidad de datos: la colección no tiene tablas, sus tablas **no tienen columnas**, o ninguna tiene **términos técnicos** todavía. Esto **no** se arregla ajustando el plan. NO volver a llamar con un plan retocado — seguir §7.3.
 
 | Opción | Pasos | Cuándo elegirla |
 |---|---|---|
@@ -160,6 +163,16 @@ Cuando `create_ontology` o `update_ontology` devuelve error **después de que el
 **C vs D:** si solo unas clases concretas fallaron y el resto de la ontología está sano, preferir C (más barato y no destructivo). Si el fallo es transversal o la estructura base está mal, preferir D. El agente puede sugerir un default según lo que falló, pero la decisión final es del usuario.
 
 **A/D vs B/C:** A y B aceptan entrega best-effort para terminar el flujo; C y D exigen calidad a costa de posibles nuevos halts. Hay que dejar el trade-off explícito al presentar las opciones.
+
+### 7.3 Errores de precondición de datos (no reintentables)
+
+Algunos errores significan que **los datos no están listos**, no que la petición esté mal formada. Son terminales para la llamada actual y **no se pueden resolver reintentando ni ajustando `user_instructions`/el plan**; no consumen presupuesto de reintentos por entidad (§7.1) y son ajenos al manejo de indisponibilidad de OpenSearch del §10. Reconócelos **por el significado del mensaje**, no por un código ni un string literal: el mensaje llega ya localizado en el idioma del usuario y puede venir reformulado por el modelo o embebido en una lista por entidad, así que casa el concepto (bilingüe), nunca un string fijo. Tres formas:
+
+- **La colección no tiene tablas** — el mensaje indica que el dominio/colección no tiene tablas con las que trabajar. Acción: pedir al usuario que verifique que la colección tiene tablas (o crearla/poblarla primero) y reintentar.
+- **Las tablas no tienen columnas** — el mensaje indica que las tablas no tienen columnas en el catálogo de gobierno / la vista técnica no se ha refrescado. **El agente no tiene tool para refrescarla** — el arreglo es del lado de Governance. Acción: transmitir los próximos pasos del mensaje (refrescar/re-escanear la vista técnica de la colección en Stratio Governance, o verificar que el esquema se ingirió) y parar; no reintentar.
+- **Las tablas no tienen términos técnicos** (solo ontología) — el mensaje indica que las tablas aún no tienen términos técnicos/descripciones. Acción: ofrecer generarlos primero con el flujo de términos técnicos, y luego reintentar la ontología.
+
+En los tres: **presenta la guía del mensaje y para; no entres en bucle de reintentos automáticos** (cualquier reintento mencionado arriba es una nueva petición del usuario tras arreglar los datos, no el bucle automático del agente). Los mensajes ya llevan "Próximos pasos" accionables; el agente los transmite y, donde puede actuar (faltan términos técnicos), ofrece el flujo correctivo.
 
 ## 8. Ejecución en Paralelo
 

@@ -90,7 +90,12 @@ According to the decision from step 2:
 
 #### 4.b Recovery flow if `create_ontology` / `update_ontology` returns an error
 
-**Important distinction**: if the failure response says the chain stopped **before generating any class** (typical wordings: the plan is not achievable with the available tables, required tables are missing, the request exceeds table/size limits, the plan could not be validated), the ontology was **not** persisted — just re-call `create_ontology` with an adjusted plan. The flow below applies **only** when the chain produced or partially produced classes and quality validation kept rejecting them.
+**Important distinction**: if the failure response says the chain stopped **before generating any class**, the ontology was **not** persisted — do NOT enter the A-F flow below (which applies **only** when the chain produced or partially produced classes and quality validation kept rejecting them). Two different pre-generation causes, with opposite actions (recognise the cause by the meaning of the message — bilingual, not a literal string):
+
+- **Plan not feasible** — the plan is not achievable with the available tables, table names are wrong, or the request exceeds table/size limits. → re-call `create_ontology` with an **adjusted plan** (narrow scope, fix names, simplify).
+- **Data precondition not met** — the collection has no tables, its tables have **no columns**, or none have **technical terms** yet. Do **not** re-call with a tweaked plan (`guides/stratio-semantic-layer-tools.md` §7.3):
+  - **No technical terms** → offer to generate them first with `/create-technical-terms` for this domain, then retry the ontology.
+  - **No columns / no tables** → the agent has no tool to refresh the schema; relay the message's next steps (refresh/verify the collection's technical view in Stratio Governance) and stop.
 
 In that case, present the user with the six options below and let them pick. **Confirm explicitly with the user before any call to `delete_ontology` (options A, D, E)** — the destructive-hint MCP annotation is informative, not enforcement.
 
