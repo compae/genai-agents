@@ -33,7 +33,7 @@ Leer y seguir `guides/stratio-data-tools.md` sec 5 para los pasos de descubrimie
 
 ## 3. EDA y Perfilado de Datos
 
-Antes de preguntar al usuario sobre formatos y planificar métricas, entender la realidad de los datos en dos dimensiones complementarias: el **perfil estadístico** (EDA) y la **cobertura de calidad de gobernanza** ya definida para esas tablas. Ambas se lanzan en paralelo.
+Antes de preguntar al usuario sobre formatos y planificar métricas, entender la realidad de los datos en dos dimensiones complementarias: el **perfil estadístico** (EDA) y la **cobertura de calidad de gobernanza** ya definida para esas tablas. Ambas se lanzan en paralelo. **Los marcadores estadísticos del EDA vienen de `profile_data` (y, cuando se necesita un agregado concreto, de una query MCP agregada) — nunca de descargar las filas de las tablas para calcularlos en pandas; sigue la jerarquía de 3 niveles de `guides/stratio-data-tools.md` §3.**
 
 1. **Lanzamiento en paralelo** — Para las tablas clave identificadas en el paso 2, lanzar a la vez:
    - `profile_data` por tabla (perfilado estadístico — seguir la mecánica y umbrales adaptativos de `guides/stratio-data-tools.md` sec 6)
@@ -256,9 +256,10 @@ complejidad, profundidad, formatos y estilo.
 El stack Python lo provee el entorno (imagen del sandbox Cowork o venv local); `python3` resuelve automáticamente. Si el análisis necesita una librería no incluida en `requirements.txt`, `pip install <pkg>` en el entorno actual. Para deps recurrentes, añadirlas también a `requirements.txt` para que la imagen del sandbox las recoja en el siguiente rebuild.
 
 ### 6.2 Obtención de datos
+- **Prefiere resultados agregados.** Pide al MCP las métricas/marcadores ya calculados (medias, percentiles, conteos, correlaciones por grupo) para que cada resultado sean unas pocas filas. Sigue la jerarquía de 3 niveles de `guides/stratio-data-tools.md` §3: agregar en el MCP (`query_data`, o `generate_sql`+`execute_sql`) → `profile_data` para los marcadores del EDA → detalle fila a fila solo cuando un test/clustering realmente lo necesite
 - Usar `query_data(data_question=..., domain_name=..., output_format="dict")` para cada pregunta de datos. **Lanzar en paralelo** todas las queries independientes definidas en el plan (paso 5.5). Solo serializar si una query necesita el resultado de otra para formularse
 - Seguir todas las reglas de `guides/stratio-data-tools.md` (MCP-first, output_format, no SQL manual, ejecución en paralelo)
-- Guardar datos intermedios en `output/[ANALISIS_DIR]/data/` como CSV si son necesarios para scripts posteriores
+- **El detalle fila a fila se queda fuera del contexto.** Cuando una query devuelve legítimamente detalle fila a fila para un test/clustering en Python y el payload es grande, el runtime anfitrión lo trunca a un fichero (`guides/stratio-mcp-response-patterns.md` §2, rama "datos-para-cálculo"): haz que el script lea ese fichero (`json.load(ruta)` → `pd.DataFrame(resp["data"])`). Guardar datos intermedios en `output/[ANALISIS_DIR]/data/` como CSV para scripts posteriores. Nunca pegues el payload de detalle en el chat
 
 ### 6.3 Validación post-query (obligatorio)
 Aplicar las 7 validaciones de `guides/stratio-data-tools.md` sec 8 a cada resultado recibido. Cuando se lanzan queries en paralelo, validar cada resultado conforme llega. Si alguna falla: reformular la pregunta al MCP, informar al usuario, ajustar el plan.
@@ -270,7 +271,7 @@ Aplicar las 7 validaciones de `guides/stratio-data-tools.md` sec 8 a cada result
   - Realizar transformaciones y cálculos
   - Generar visualizaciones en `output/[ANALISIS_DIR]/assets/`
   - Producir outputs en `output/[ANALISIS_DIR]/`
-- **Datasets grandes (>100k filas)**: Usar muestreo estratificado para desarrollo rápido, datos completos para la versión final
+- **Datasets grandes (>100k filas)**: Usar muestreo estratificado para desarrollo rápido. Para la versión final, preferir agregar en el MCP (SQL) para que solo el resultado agregado llegue al análisis; si el script realmente necesita el detalle fila a fila completo, leerlo del disco (el fichero de salida truncada o un CSV guardado), nunca de un payload pegado en el contexto
 
 ### 6.5 Testing
 
