@@ -139,12 +139,15 @@ Before any operation, verify it does not already exist:
 - If it cannot -> ask the user what additional context to provide -> pass it as `user_instructions` in the retry
 - Retry ONLY the failed entity (specific table, class, or view), not the entire batch
 - Maximum 2 retries per entity. If it persists -> document in the summary and continue with the rest
+- **Exception — data-precondition errors are NOT retryable** (see §7.3): they are not fixed by retrying or by improving `user_instructions`. They consume no retry budget — present the message's guidance and offer the corrective action instead of looping.
 
 ### 7.2 Ontology generation failure with a valid plan (post-plan-validation recovery)
 
 When `create_ontology` or `update_ontology` returns an error **after the plan has already been validated** — i.e. the chain produced (or partially produced) classes/views but the supervisors kept rejecting them — the recovery is different from the generic "improve `user_instructions` and retry" loop above. In that scenario the agent **must present the user with the following options and let them pick**, then execute the chosen sequence of tool calls.
 
-> Distinction first: when the response message says the failure happened **before any class was generated** — typical wordings are about the requested plan being infeasible with the available tables, missing required tables in the data domain, the request exceeding table/size limits, or the chain being unable to validate the plan — the ontology was **not** persisted. There is nothing to clean up. Simply re-call `create_ontology` with an adjusted plan (narrow the scope, fix table names, simplify relationships); do **not** enter the A-F flow below.
+> Distinction first: when the response says the failure happened **before any class was generated**, the ontology was **not** persisted — there is nothing to clean up, so do **not** enter the A-F flow below. But there are **two different pre-generation causes, with opposite actions**:
+> - **(i) Plan not feasible** — the plan is unachievable with the available tables, references wrong table names, or exceeds table/size limits. Action: re-call `create_ontology` with an **adjusted plan** (narrow the scope, fix table names, simplify relationships).
+> - **(ii) Data precondition not met** — a data-readiness problem: the collection has no tables, its tables have **no columns**, or none of them have **technical terms** yet. This is **not** fixed by adjusting the plan. Do **not** re-call with a tweaked plan — follow §7.3.
 
 | Option | Steps | When to choose it |
 |---|---|---|
@@ -160,6 +163,16 @@ When `create_ontology` or `update_ontology` returns an error **after the plan ha
 **Choosing C vs D:** if only specific classes failed and the rest of the ontology is healthy, prefer C (cheaper and non-destructive). If the failure is transversal or the base structure is wrong, prefer D. The agent may suggest a default based on what failed, but the user makes the final call.
 
 **Choosing A/D vs B/C:** A and B accept best-effort delivery to finish the flow; C and D enforce quality at the cost of further halts. Surface the trade-off when presenting the options.
+
+### 7.3 Data-precondition errors (non-retryable)
+
+Some errors mean the **data is not ready**, not that the request was malformed. They are terminal for the current call and **cannot be resolved by the agent retrying or adjusting `user_instructions`/the plan**; they consume no per-entity retry budget (§7.1) and are unrelated to the OpenSearch-unavailability handling of §10. Recognise them **by the meaning of the returned message**, not by any code or literal string: the message arrives already localized in the user's language and may be reworded by the model or embedded in a per-entity list, so match the concept (bilingual), never a fixed string. Three shapes:
+
+- **Collection has no tables** — the message says the domain/collection has no tables to work with. Action: tell the user to verify the collection has tables (or create/populate it first), then retry.
+- **Tables have no columns** — the message says the tables have no columns in the governance catalog / the technical view was not refreshed. **The agent has no tool to refresh it** — the fix is on the Governance side. Action: relay the message's next steps (refresh/re-scan the collection's technical view in Stratio Governance, or verify the schema was ingested) and stop; do not retry.
+- **Tables have no technical terms** (ontology only) — the message says the tables have no technical terms/descriptions yet. Action: offer to generate them first with the technical-terms flow, then retry the ontology.
+
+In all three: **present the message's guidance and stop; do not loop automatic retries** (any retry mentioned above is a fresh user request after fixing the data, not the agent's automatic retry loop). The messages already carry actionable "Next steps"; the agent surfaces them and, where it can act (missing technical terms), offers the corrective flow.
 
 ## 8. Parallel Execution
 

@@ -67,7 +67,7 @@ Invocar `create_technical_terms`. Para regenerar: pasar `regenerate=true` (DESTR
 
 Basado en la respuesta de la tool, presentar:
 - Tablas procesadas
-- Errores si los hubo (reintentar entidades fallidas con `user_instructions` mejoradas, max 2 reintentos)
+- Errores si los hubo: para fallos ordinarios, reintentar la entidad fallida con `user_instructions` mejoradas (máx 2 reintentos). **Excepción — los errores de precondición de datos NO son reintentables** (`guides/stratio-semantic-layer-tools.md` §7.3): si el mensaje significa que la colección no tiene tablas, o sus tablas **no tienen columnas** en el catálogo de gobierno (la vista técnica no se refrescó) — reconócelo por el significado del mensaje, no por un string literal — **no reintentar**. Presenta la guía del mensaje (refrescar/verificar la vista técnica de la colección en Stratio Governance; el agente no tiene tool para hacerlo) y para. Si solo **algunas** tablas vinieron sin columnas, informa qué tablas se saltaron y por qué (el resto se procesaron)
 - Siguientes pasos sugeridos:
   - "Puedes crear una ontología con `/create-ontology`"
   - "Si necesitas corregir, añadir o eliminar claves foráneas virtuales concretas sin regenerar los términos técnicos, usa `/refine-foreign-keys`"
