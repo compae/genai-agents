@@ -2,6 +2,8 @@
 
 Activate according to the selected depth (see activation matrix in Phase 2 of the workflow (AGENTS.md)).
 
+> **Before computing any of these in Python, check the cheaper source first.** Descriptive markers — means, std, percentiles, correlations, group comparisons expressed as aggregates — are expressible in Spark SQL and many come straight from `profile_data`. Get them from the MCP, and only pull row-level detail into a Python script (reading from disk, per the 3-level hierarchy in `guides/stratio-data-tools.md` §3) when the test genuinely needs the raw observations (e.g. a t-test / Mann-Whitney over individual values, or clustering). This keeps row-level data out of the model context.
+
 ## Statistical rigor and uncertainty
 
 **When to apply statistical tests:**

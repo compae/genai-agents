@@ -39,7 +39,12 @@ Cuando la salida inline de una tool superaría el límite de respuesta del entor
 - La respuesta contiene un marcador de truncación explícito (p. ej. `…N bytes truncated…`, "output was truncated", "Full output saved to ...") y una ruta de fichero
 - La respuesta lleva una ruta de fichero guardado y no hay campo `task_id`
 
-**Protocolo** (aplicar en orden):
+**Primero, identifica tu objetivo — determina la rama:**
+
+- **(a) Metadatos / inventario** (el caso habitual: extraer nombres de tablas, un subconjunto temático o un registro concreto de un listado grande como `list_domain_tables` o `list_technical_domain_concepts`) → sigue el protocolo de extracción de abajo: delega en el subagente del runtime con `jq`/`grep` y devuelve solo el fragmento.
+- **(b) Datos para cálculo** (el fichero guardado es el payload `data` de una query de datos — `query_data`, `execute_sql`, `profile_data` — que necesitas entero para un test estadístico, clustering o agregación en Python) → **NO lo extraigas al contexto**. Haz que un script Python lea el fichero directamente y agregue ahí. El fichero es un JSON de una sola línea con la respuesta de la tool, así que `resp = json.load(open("<ruta-guardada>")); df = pd.DataFrame(resp["data"])` (por defecto `output_format="dict"`; usa `resp["columns"]` + `io.StringIO` cuando `output_format="csv"`). Esto NO viola la regla 1 de abajo — la regla 1 prohíbe leer el fichero en el *contexto del modelo*; un script que lo parsea y agrega mantiene el payload completamente fuera del contexto. Salta el protocolo de extracción.
+
+**Protocolo para la rama (a) — metadatos / inventario** (aplicar en orden):
 1. **Nunca leas el fichero guardado completo en tu propio contexto.** Disparará el mismo límite que provocó la truncación.
 2. **Delega la inspección del fichero al subagente del runtime** (p. ej. `explore` de OpenCode vía la tool Task) para preservar tu propio contexto. El subagente NO ve la conversación padre — solo ve el prompt que tú escribes. El prompt DEBE incluir:
    - **La ruta completa del fichero guardado, copiada literalmente del aviso de truncación.** No parafrasees. No pidas al subagente que busque el fichero con `Glob` — si tiene que adivinar, puede fallar y devolverte un error. Pega la ruta absoluta exactamente como aparece en el hint del runtime.
