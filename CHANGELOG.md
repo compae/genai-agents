@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (upcoming)
+## 0.3.0 (2026-07-09)
 
 * [ROCK-15011] **`stratio-data-tools.md`**: add a §3 rule that the query engine is Spark SQL and does not support `LIMIT N OFFSET M` (the `OFFSET` keyword raises a syntax error) — agents must use the tool's `limit` parameter to cap/page rows in `query_data`/`execute_sql`/`profile_data` and never add `LIMIT`/`OFFSET` to the SQL (EN + ES).
 * Harden MCP guidance: `stratio-mcp-response-patterns.md` §1 now requires agents to keep polling long-running tasks through latency instead of abandoning them, and to never fabricate a substitute deliverable (e.g. a manual plan for the Governance UI); new §3 forbids executing or polling MCP tools inside a subagent (allowed only for inspecting truncated files, §2). Referenced from `stratio-data-tools.md`, `stratio-semantic-layer-tools.md`, and surfaced at the top level in the 4 MCP-using agents (EN + ES).
