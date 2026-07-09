@@ -67,7 +67,7 @@ Invoke `create_technical_terms`. To regenerate: pass `regenerate=true` (DESTRUCT
 
 Based on the tool's response, present:
 - Tables processed
-- Errors if any (retry failed entities with improved `user_instructions`, max 2 retries)
+- Errors if any: for ordinary failures, retry the failed entity with improved `user_instructions` (max 2 retries). **Exception — data-precondition errors are NOT retryable** (`guides/stratio-semantic-layer-tools.md` §7.3): if the message means the collection has no tables, or its tables have **no columns** in the governance catalog (the technical view was not refreshed) — recognise this by the meaning of the message, not a literal string — **do not retry**. Present the message's guidance (refresh/verify the collection's technical view in Stratio Governance; the agent has no tool to do it) and stop. If only **some** tables came back without columns, report which tables were skipped and why (the rest were processed)
 - Suggested next steps:
   - "You can create an ontology with `/create-ontology`"
   - "If you need to fix, add or remove individual virtual foreign keys without regenerating the technical terms, use `/refine-foreign-keys`"
