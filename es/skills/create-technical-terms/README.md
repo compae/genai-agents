@@ -8,7 +8,7 @@ Crea o regenera descripciones técnicas (tablas y columnas) para un dominio téc
 - Reporta el estado actual: total de tablas, ya documentadas, pendientes, y si la colección tiene descripción.
 - Ofrece cuatro opciones de alcance: todas las tablas pendientes (idempotente), un subconjunto específico, regeneración completa (destructiva) o regeneración de tablas específicas (destructiva).
 - Construye `user_instructions` mediante el **Workflow de Enriquecimiento con Instrucciones del Glosario** (`stratio-semantic-layer-tools.md` §11): el usuario puede traerse las GenAI Technical Term Instructions del diccionario de datos (específicas de la fase, opcionalmente más globales), aportar un fichero externo (diccionarios de datos, specs, glosarios), superponer reglas en texto libre, o saltar el enriquecimiento por completo.
-- Invoca `create_technical_terms` y reporta el resumen directamente; reintenta las entidades fallidas hasta dos veces con instrucciones mejoradas.
+- Invoca `create_technical_terms` y reporta el resumen directamente; reintenta los fallos ordinarios hasta dos veces con instrucciones mejoradas, pero los errores de precondición de datos (colección sin tablas, o tablas sin columnas) los transmite sin reintentar.
 
 ## Cuándo usarla
 

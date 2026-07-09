@@ -8,7 +8,7 @@ Creates or regenerates technical descriptions (tables and columns) for a technic
 - Reports the current state: total tables, tables already documented, tables pending, and whether the collection has a description.
 - Offers four scope options: all pending tables (idempotent), a specific subset, full regeneration (destructive), or regeneration of specific tables (destructive).
 - Builds `user_instructions` through the **Glossary Instruction Enrichment Workflow** (`stratio-semantic-layer-tools.md` §11): the user can pull GenAI Technical Term Instructions from the data dictionary (specific to the phase, optionally plus globals), supply an external file (data dictionaries, specs, glossaries), layer free-text rules on top, or skip enrichment entirely.
-- Invokes `create_technical_terms` and reports the tool summary directly; retries failed entities up to twice with improved instructions.
+- Invokes `create_technical_terms` and reports the tool summary directly; retries ordinary failures up to twice with improved instructions, but surfaces data-precondition errors (collection with no tables, or tables with no columns) without retrying.
 
 ## When to use it
 

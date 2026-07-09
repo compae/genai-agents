@@ -90,7 +90,12 @@ Según decisión del paso 2:
 
 #### 4.b Flujo de recuperación si `create_ontology` / `update_ontology` devuelve error
 
-**Distinción importante**: si la respuesta de fallo indica que la chain se detuvo **antes de generar ninguna clase** (formulaciones típicas: el plan no es alcanzable con las tablas disponibles, faltan tablas necesarias, la petición excede los límites de tablas/tamaño, no se pudo validar el plan), la ontología **no** se persistió — basta con volver a llamar a `create_ontology` con un plan ajustado. El flujo siguiente aplica **solo** cuando la chain produjo o produjo parcialmente clases y la validación de calidad las siguió rechazando.
+**Distinción importante**: si la respuesta de fallo indica que la chain se detuvo **antes de generar ninguna clase**, la ontología **no** se persistió — NO entrar en el flujo A-F siguiente (que aplica **solo** cuando la chain produjo o produjo parcialmente clases y la validación de calidad las siguió rechazando). Dos causas pre-generación distintas, con acciones opuestas (reconoce la causa por el significado del mensaje — bilingüe, no por un string literal):
+
+- **Plan no viable** — el plan no es alcanzable con las tablas disponibles, los nombres de tabla son incorrectos, o la petición excede los límites de tablas/tamaño. → volver a llamar a `create_ontology` con un **plan ajustado** (acotar alcance, corregir nombres, simplificar).
+- **Precondición de datos no cumplida** — la colección no tiene tablas, sus tablas **no tienen columnas**, o ninguna tiene **términos técnicos** todavía. NO volver a llamar con un plan retocado (`guides/stratio-semantic-layer-tools.md` §7.3):
+  - **Sin términos técnicos** → ofrecer generarlos primero con `/create-technical-terms` para este dominio, y luego reintentar la ontología.
+  - **Sin columnas / sin tablas** → el agente no tiene tool para refrescar el esquema; transmitir los próximos pasos del mensaje (refrescar/verificar la vista técnica de la colección en Stratio Governance) y parar.
 
 En ese caso, presentar al usuario las seis opciones siguientes y dejar que elija. **Confirmar explícitamente con el usuario antes de cualquier llamada a `delete_ontology` (opciones A, D, E)** — la anotación destructive-hint del MCP es informativa, no enforcement.
 
