@@ -39,7 +39,12 @@ When a tool's inline output would exceed the host environment's response limit, 
 - The response contains an explicit truncation marker (e.g. `…N bytes truncated…`, "output was truncated", "Full output saved to ...") and a file path
 - The response carries a saved-file path with no `task_id` field
 
-**Protocol** (apply in order):
+**First, identify your goal — it selects the branch:**
+
+- **(a) Metadata / inventory** (the usual case: extract table names, a topical subset or a specific record from a large listing such as `list_domain_tables` or `list_technical_domain_concepts`) → follow the extraction protocol below: delegate to the runtime's subagent with `jq`/`grep` and return only the fragment.
+- **(b) Data for computation** (the saved file is the `data` payload of a data query — `query_data`, `execute_sql`, `profile_data` — that you need whole for a Python statistical test, clustering or aggregation) → **do NOT extract it into the context**. Have a Python script read the file directly and aggregate there. The file is a single-line JSON of the tool's response, so `resp = json.load(open("<saved-path>")); df = pd.DataFrame(resp["data"])` (default `output_format="dict"`; use `resp["columns"]` + `io.StringIO` when `output_format="csv"`). This does NOT violate rule 1 below — rule 1 forbids reading the file into the *model context*; a script that parses it and aggregates keeps the payload out of the context entirely. Skip the extraction protocol.
+
+**Protocol for branch (a) — metadata / inventory** (apply in order):
 1. **Never read the full saved file directly into your own context.** It will trigger the same limit that caused the truncation.
 2. **Delegate the file inspection to the runtime's subagent** (e.g. OpenCode's `explore` via the Task tool) to preserve your own context. The subagent has NO view of the parent conversation — it only sees the prompt you write. The prompt MUST contain:
    - **The full saved file path, copied literally from the truncation notice.** Do not paraphrase. Do not ask the subagent to find it with Glob — if it has to guess, it can fail and surface an error to you. Paste the absolute path exactly as it appeared in the runtime's hint.

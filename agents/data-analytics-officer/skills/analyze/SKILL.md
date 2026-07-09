@@ -33,7 +33,7 @@ Read and follow `guides/stratio-data-tools.md` sec 5 for the domain discovery st
 
 ## 3. EDA and Data Profiling
 
-Before asking the user about formats and planning metrics, understand the reality of the data on two complementary dimensions: the **statistical profile** (EDA) and the **governance quality coverage** already defined for those tables. Both run in parallel.
+Before asking the user about formats and planning metrics, understand the reality of the data on two complementary dimensions: the **statistical profile** (EDA) and the **governance quality coverage** already defined for those tables. Both run in parallel. **The EDA's statistical markers come from `profile_data` (and, when a specific aggregate is needed, from an aggregated MCP query) — never from downloading the tables' rows to compute them in pandas; follow the 3-level hierarchy in `guides/stratio-data-tools.md` §3.**
 
 1. **Parallel launch** — For the key tables identified in step 2, launch together:
    - `profile_data` per table (statistical profiling — follow mechanics and adaptive thresholds from `guides/stratio-data-tools.md` sec 6)
@@ -261,9 +261,10 @@ complexity, depth, formats, and style.
 The Python stack is provided by the environment (Cowork sandbox image or local venv); `python3` resolves automatically. If the analysis needs a library not in `requirements.txt`, `pip install <pkg>` in the current environment. For recurring deps, also add them to `requirements.txt` so the sandbox image picks them up on next rebuild.
 
 ### 6.2 Data retrieval
+- **Prefer aggregated results.** Ask the MCP for the metrics/markers already computed (averages, percentiles, counts, correlations by group) so each result is a handful of rows. Follow the 3-level hierarchy in `guides/stratio-data-tools.md` §3: aggregate in the MCP (`query_data`, or `generate_sql`+`execute_sql`) → `profile_data` for EDA markers → row-level detail only when a test/clustering truly needs it
 - Use `query_data(data_question=..., domain_name=..., output_format="dict")` for each data question. **Launch in parallel** all independent queries defined in the plan (step 5.5). Only serialize if one query needs another's result to be formulated
 - Follow all rules from `guides/stratio-data-tools.md` (MCP-first, output_format, no manual SQL, parallel execution)
-- Save intermediate data in `output/[ANALYSIS_DIR]/data/` as CSV if needed for subsequent scripts
+- **Row-level detail stays out of the context.** When a query legitimately returns row-level detail for a Python test/clustering and the payload is large, the host runtime truncates it to a file (`guides/stratio-mcp-response-patterns.md` §2, "data-for-computation" branch): have the script read that file (`json.load(path)` → `pd.DataFrame(resp["data"])`). Save intermediate data in `output/[ANALYSIS_DIR]/data/` as CSV for subsequent scripts. Never paste the row-level payload into chat
 
 ### 6.3 Post-query validation (mandatory)
 Apply the 7 validations from `guides/stratio-data-tools.md` sec 8 to each received result. When queries are launched in parallel, validate each result as it arrives. If any fails: reformulate the question to the MCP, inform the user, adjust the plan.
@@ -275,7 +276,7 @@ Apply the 7 validations from `guides/stratio-data-tools.md` sec 8 to each receiv
   - Perform transformations and calculations
   - Generate visualizations in `output/[ANALYSIS_DIR]/assets/`
   - Produce outputs in `output/[ANALYSIS_DIR]/`
-- **Large datasets (>100k rows)**: Use stratified sampling for rapid development, full data for the final version
+- **Large datasets (>100k rows)**: Use stratified sampling for rapid development. For the final version, prefer aggregating in the MCP (SQL) so only the aggregated result reaches the analysis; if the script genuinely needs the full row-level detail, read it from disk (the truncated-output file or a saved CSV), never from a payload pasted into the context
 
 ### 6.5 Testing
 

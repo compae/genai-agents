@@ -251,7 +251,7 @@ Cargar `/analyze` §4.1 para ejecutar el bloque de preguntas (Profundidad + Audi
 
 0. **Determinar carpeta del análisis**: Generar nombre `YYYY-MM-DD_HHMM_nombre_descriptivo` (minusculas, sin tildes, guiones bajos, max 30 chars en el nombre). Declarar en chat. Crear subdirectorios: `output/[ANALISIS_DIR]/scripts/`, `output/[ANALISIS_DIR]/data/`, `output/[ANALISIS_DIR]/assets/`. Si profundidad >= Estándar, crear también `output/[ANALISIS_DIR]/reasoning/` y `output/[ANALISIS_DIR]/validation/`. Persistir el plan aprobado en `output/[ANALISIS_DIR]/plan.md` con el contenido completo del plan formulado en la Fase 3
 1. Entorno: el stack Python lo provee el entorno actual (en Stratio Cowork, la imagen del sandbox; en dev local, tu propio venv). Usar `python3` directamente — sin script de bootstrap. Si hace falta una librería sólo-runtime, `pip install <pkg>`; si es recurrente, añadirla a `requirements.txt` para que la imagen del sandbox la recoja en el siguiente rebuild
-2. Consultar datos vía MCP (`query_data` con preguntas en lenguaje natural y `output_format="dict"`). Lanzar en paralelo todas las queries independientes del plan
+2. Consultar datos vía MCP. **Prefiere resultados agregados** — pide las métricas/marcadores ya calculados (medias, percentiles, conteos, correlaciones por grupo) para que cada resultado sean unas pocas filas (jerarquía de 3 niveles en `guides/stratio-data-tools.md` §3). Usa `query_data` con preguntas en lenguaje natural (`output_format="dict"`); lanza en paralelo todas las queries independientes del plan. Baja el detalle fila a fila solo cuando un test/clustering en Python realmente lo necesite, y mantenlo en disco, nunca en el contexto
 3. **Validar datos recibidos** (ver sección 4 — Validación post-query)
 4. Escribir scripts Python en `output/[ANALISIS_DIR]/scripts/` con nombres descriptivos
 5. **(Si testing = Sí)** Generar tests unitarios (`output/[ANALISIS_DIR]/scripts/test_*.py`) con mocks o subsets de datos
@@ -355,6 +355,8 @@ Para implementación detallada de cada técnica, ver skill `/analyze` [advanced-
 
 Todas las reglas de uso de MCPs Stratio (herramientas disponibles, reglas estrictas, MCP-first, domain_name inmutable, output_format, profiling, ejecución en paralelo, cascada de aclaración, validación post-query, timeouts y buenas prácticas) están en `guides/stratio-data-tools.md`. Seguir TODAS las reglas definidas allí.
 
+**`execute_sql` — sin SQL ad-hoc en este agente.** `execute_sql` se usa ÚNICAMENTE para re-ejecutar el SQL producido por `generate_sql` (revisado si hace falta). No teclees tu propio SQL para explorar, filtrar o traer datos — ni aunque creas conocer las columnas: se salta el conocimiento del dominio gobernado (nombres físicos, reglas de negocio, joins gobernados) y tiende a traer detalle fila a fila que satura el contexto. Para datos usa `query_data`; para un agregado a medida usa `generate_sql` → revisar → `execute_sql`.
+
 **Subagentes — MCP solo inline.** Nunca ejecutes ni hagas polling de una tool MCP de Stratio (servidor `gov` o `sql`) dentro de un subagente, subtarea o tool Task — aplica a cualquier llamada MCP, incluidas las de lectura, no solo las de escritura. Delegar en un subagente es legítimo SOLO para inspeccionar salidas truncadas guardadas en fichero (`guides/stratio-mcp-response-patterns.md` §2). Regla completa en `guides/stratio-mcp-response-patterns.md` §3.
 
 Checklist de suficiencia de datos y Data Profiling Score: ver skill `/analyze` sec 3.
@@ -406,10 +408,11 @@ Ver el `quality-report-layout.md` de `/quality-report` para el layout específic
 - Guardar datos intermedios en `output/[ANALISIS_DIR]/data/` (CSVs, pickles, JSONs)
 - Deliverables finales siempre en `output/[ANALISIS_DIR]/`
 - **Datasets grandes** — Activar si profiling reporta >500K filas:
-  1. **Dtypes eficientes**: Strings repetitivos → `category`, enteros → `int32`, fechas parseadas al cargar (`parse_dates`)
-  2. **Nunca `iterrows()`**: Siempre operaciones vectorizadas (`apply`, broadcasting, `np.where`)
-  3. **Chunks para >1M filas**: `pd.read_csv(..., chunksize=100000)` + procesar + concat. O mejor: agregar en MCP
-  4. **Muestreo para desarrollo**: 10% para desarrollar/testear, 100% para versión final. Verificar consistencia de resultados ±5%
+  1. **Preferir agregar en el MCP (SQL)**: empuja la agrupación/estadística a la query para que solo el resultado agregado llegue al análisis. Es el primer recurso, no el último
+  2. **Dtypes eficientes**: Strings repetitivos → `category`, enteros → `int32`, fechas parseadas al cargar (`parse_dates`)
+  3. **Nunca `iterrows()`**: Siempre operaciones vectorizadas (`apply`, broadcasting, `np.where`)
+  4. **Chunks para >1M filas** (solo cuando el detalle fila a fila sea inevitable): leer del disco con `pd.read_csv(..., chunksize=100000)` + procesar + concat — nunca cargar el detalle en el contexto del modelo
+  5. **Muestreo para desarrollo**: 10% para desarrollar/testear; para la versión final preferir el agregado del MCP, y leer el detalle fila a fila completo del disco solo cuando un test/clustering lo requiera. Verificar consistencia de resultados ±5%
 
 ---
 

@@ -2,6 +2,8 @@
 
 Activar según la profundidad seleccionada (ver matriz de activación en Fase 2 del workflow (AGENTS.md)).
 
+> **Antes de calcular cualquiera de estas en Python, comprueba primero la fuente más barata.** Los marcadores descriptivos — medias, desviación típica, percentiles, correlaciones, comparaciones entre grupos expresadas como agregados — son expresables en Spark SQL y muchos salen directamente de `profile_data`. Obtenlos del MCP, y solo baja el detalle fila a fila a un script Python (leyendo del disco, según la jerarquía de 3 niveles de `guides/stratio-data-tools.md` §3) cuando el test realmente necesite las observaciones individuales (p. ej. un t-test / Mann-Whitney sobre valores individuales, o clustering). Así el detalle fila a fila se mantiene fuera del contexto del modelo.
+
 ## Rigor estadístico e incertidumbre
 
 **Cuándo aplicar tests estadísticos:**
